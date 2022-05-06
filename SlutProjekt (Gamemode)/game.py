@@ -19,6 +19,7 @@ FPS = 60
 
 #definera spelets variabler
 GRAVITY = 0.75
+TILE_SIZE = 40
 
 #definera spelarens handling variabler
 moving_left = False
@@ -197,10 +198,11 @@ class Bullet(pygame.sprite.Sprite):
             if player.alive:
                 player.health -= 5
                 self.kill()
-        if pygame.sprite.spritecollide(enemy, bullet_group, False):
-            if enemy.alive:
-                enemy.health -= 25
-                self.kill()
+        for enemy in enemy_group:
+            if pygame.sprite.spritecollide(enemy, bullet_group, False):
+                if enemy.alive:
+                    enemy.health -= 25
+                    self.kill()
 
 
 class Grenade(pygame.sprite.Sprite):
@@ -234,13 +236,61 @@ class Grenade(pygame.sprite.Sprite):
         self.rect.x += dx
         self.rect.y += dy
 
+
+        #Nedräcknings timer
+        self.timer -= 1
+        if self.timer <= 0:
+            self.kill()
+            explosion = Explosion(self.rect.x, self.rect.y, 0.5)
+            explosion_group.add(explosion)
+            #Gö skada till alla som är i närheten
+            if abs(self.rect.centerx - player.rect.centerx) < TILE_SIZE * 2 and \
+                abs(self.rect.centery - player.rect.centery) < TILE_SIZE * 2:
+                player.health -= 50
+            for enemy in enemy_group:
+                if abs(self.rect.centerx - enemy.rect.centerx) < TILE_SIZE * 2 and \
+                    abs(self.rect.centery - enemy.rect.centery) < TILE_SIZE * 2:
+                    enemy.health -= 50
+
+class Explosion(pygame.sprite.Sprite):
+    def __init__(self, x, y, scale):
+        pygame.sprite.Sprite.__init__(self)
+        self.images = []
+        for num in range(1, 6):
+            img = pygame.image.load(f'img/explosion/exp{num}.png').convert_alpha()
+            img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
+            self.images.append(img)
+        self.frame_index = 0
+        self.image = self.images[self.frame_index]
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.counter = 0
+
+
+    def update(self):
+        EXPLOSION_SPEED = 4
+        #Uppdatera explosions animationen
+        self.counter += 1
+
+        if self.counter >= EXPLOSION_SPEED:
+            self.counter = 0
+            self.frame_index += 1
+            #Om animationen är klar ta bort explosionen
+            if self.frame_index >= len(self.images):
+                self.kill()
+            else:
+                self.image = self.images[self.frame_index]
+
 #Skapa sprite Grupper
+enemy_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
 grenade_group = pygame.sprite.Group()
+explosion_group = pygame.sprite.Group()
 
 
 player = Soldier('player', 200, 200, 3, 5, 20, 5)
 enemy = Soldier('enemy', 400, 200, 3, 5, 20, 0)
+enemy_group.add(enemy)
 
 
 run = True
@@ -253,14 +303,18 @@ while run:
     player.update()
     player.draw()
 
-    enemy.update()
-    enemy.draw()
+    for enemy in enemy_group:
+        enemy.update()
+        enemy.draw()
 
     #Uppdatera och rita ut grupperna
     bullet_group.update()
     grenade_group.update()
+    explosion_group.update()
     bullet_group.draw(screen)
     grenade_group.draw(screen)
+    explosion_group.draw(screen)
+
 
 
     #Uppdatera spelarens händelser
