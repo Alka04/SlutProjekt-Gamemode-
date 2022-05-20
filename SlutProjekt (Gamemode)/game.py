@@ -5,6 +5,7 @@ from turtle import Screen
 import pygame
 import os
 import random
+import csv
 
 pygame.init()
 
@@ -21,7 +22,11 @@ FPS = 60
 
 #definera spelets variabler
 GRAVITY = 0.75
-TILE_SIZE = 40
+ROWS = 16
+COLS = 150
+TILE_SIZE = SCREEN_HEIGHT // ROWS
+TILE_TYPES = 21
+level = 1
 
 #definera spelarens handling variabler
 moving_left = False
@@ -31,6 +36,12 @@ grenade = False
 grenade_thrown = False
 
 #ladda in bilder
+#spara tiles i en lista
+img_list = []
+for x in range(TILE_TYPES):
+    img = pygame.image.load(f'img/Tile/{x}.png')
+    img = pygame.transform.scale(img, (TILE_SIZE, TILE_SIZE))
+    img_list.append(img)
 #kula
 bullet_img = pygame.image.load('img/icons/bullet.png').convert_alpha()
 #granat
@@ -235,6 +246,21 @@ class Soldier(pygame.sprite.Sprite):
     def draw(self):
         screen.blit(pygame.transform.flip(self.image, self.flip, False), self.rect)
 
+class World():
+    def __init__(self):
+        self.obstacle_list = []
+
+    def process_data(self, data):
+        #iterera genom varje värde i nivåns data filer
+        for y, row in enumerate(data):
+            for x, tile in enumerate(row):
+                if tile >= 0:
+                    img = img_list[tile]
+                    img_rect = img.get_rect()
+                    img_rect.x = x * TILE_SIZE
+                    img_rect.y = y * TILE_SIZE
+
+
 
 class ItemBox(pygame.sprite.Sprite):
     def __init__(self, item_type, x, y):
@@ -392,7 +418,7 @@ item_box_group = pygame.sprite.Group()
 
 
 
-#Temporär -create föremåls lådor
+#Temporära föremåls lådor
 item_box = ItemBox('Health', 100, 260)
 item_box_group.add(item_box)
 item_box = ItemBox('Ammo', 400, 260)
@@ -407,6 +433,18 @@ health_bar = HealthBar(10, 10, player.health, player.health)
 enemy = Soldier('enemy', 400, 200, 1.65, 2, 20, 0)
 enemy_group.add(enemy)
 
+
+#Skapa tomma Tile listor
+world_data = []
+for row in range (ROWS):
+    r = [-1] * COLS
+    world_data.append(r)
+#ladda in nivå data samt skapa världarna
+with open(f'level{level1}_data.csv', newline='') as csvfile:
+    reader = csv.reader(csvfile, delimiter=',')
+    for x, row in enumerate(reader):
+        for y, tile in enumerate(row):
+            world_data[x][y] = int(tile)
 
 run = True
 while run:
