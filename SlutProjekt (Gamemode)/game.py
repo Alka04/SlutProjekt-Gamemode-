@@ -259,6 +259,62 @@ class World():
                     img_rect = img.get_rect()
                     img_rect.x = x * TILE_SIZE
                     img_rect.y = y * TILE_SIZE
+                    tile_data = (img, img_rect)
+                    if tile >= 0 and tile <= 8:
+                        self.obstacle_list.append(tile_data)
+                    elif tile >= 9 and tile <= 10:#skapa vatten
+                        water = Water(img, x * TILE_SIZE, y * TILE_SIZE)
+                        water_group.add(water)
+                    elif tile >= 11 and tile <= 14: #skapa dekorationer
+                        decoration = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
+                        decoration_group.add(decoration)
+                    elif tile == 15:#skapa spelare
+                        player = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 1.65, 5, 20, 5)
+                        health_bar = HealthBar(10, 10, player.health, player.health)
+                    elif tile == 16:#skapa fiender
+                        enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 1.65, 2, 20, 0)
+                        enemy_group.add(enemy)
+                    elif tile == 17:#skapa ammo lådor
+                        item_box = ItemBox('Ammo', x * TILE_SIZE, y * TILE_SIZE)
+                        item_box_group.add(item_box)
+                    elif tile == 18:#skapa granat lådor
+                        item_box = ItemBox('Grenade', x * TILE_SIZE, y * TILE_SIZE)
+                        item_box_group.add(item_box)
+                    elif tile == 19:#skapa Hälso lådor
+                        item_box = ItemBox('Health', x * TILE_SIZE, y * TILE_SIZE)
+                        item_box_group.add(item_box)
+                    elif tile == 20:#skapa utgång
+                        exit = Exit(img, x * TILE_SIZE, y * TILE_SIZE)
+                        exit_group.add(exit)
+
+        return player, health_bar
+
+    
+    def draw(self):
+        for tile in self.obstacle_list:
+            screen.blit(tile[0], tile[1])
+
+class Decoration(pygame.sprite.Sprite):
+    def __init__(self, img, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = img
+        self.rect = self.image.get_rect()
+        self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+
+
+class Water(pygame.sprite.Sprite):
+    def __init__(self, img, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = img
+        self.rect = self.image.get_rect()
+        self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+
+class Exit(pygame.sprite.Sprite):
+    def __init__(self, img, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = img
+        self.rect = self.image.get_rect()
+        self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
 
 
 
@@ -415,23 +471,9 @@ bullet_group = pygame.sprite.Group()
 grenade_group = pygame.sprite.Group()
 explosion_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
-
-
-
-#Temporära föremåls lådor
-item_box = ItemBox('Health', 100, 260)
-item_box_group.add(item_box)
-item_box = ItemBox('Ammo', 400, 260)
-item_box_group.add(item_box)
-item_box = ItemBox('Grenade', 500, 260)
-item_box_group.add(item_box)
-
-
-player = Soldier('player', 200, 200, 1.65, 5, 20, 5)
-health_bar = HealthBar(10, 10, player.health, player.health)
-
-enemy = Soldier('enemy', 400, 200, 1.65, 2, 20, 0)
-enemy_group.add(enemy)
+decoration_group = pygame.sprite.Group()
+water_group = pygame.sprite.Group()
+exit_group = pygame.sprite.Group()
 
 
 #Skapa tomma Tile listor
@@ -440,18 +482,23 @@ for row in range (ROWS):
     r = [-1] * COLS
     world_data.append(r)
 #ladda in nivå data samt skapa världarna
-with open(f'level{level1}_data.csv', newline='') as csvfile:
+with open(f'level{level}_data.csv', newline='') as csvfile:
     reader = csv.reader(csvfile, delimiter=',')
     for x, row in enumerate(reader):
         for y, tile in enumerate(row):
             world_data[x][y] = int(tile)
+world = World()
+player, health_bar = world.process_data(world_data)
 
 run = True
 while run:
 
     clock.tick(FPS)
 
+    #updatera bakgrund
     draw_bg()
+    #rita värld kartan
+    world.draw()
     #visa spelarens hälsa
     health_bar.draw(player.health)
     #visa ammunation
@@ -477,10 +524,16 @@ while run:
     grenade_group.update()
     explosion_group.update()
     item_box_group.update()
+    decoration_group.update()
+    water_group.update()
+    exit_group.update()
     bullet_group.draw(screen)
     grenade_group.draw(screen)
     explosion_group.draw(screen)
     item_box_group.draw(screen)
+    decoration_group.draw(screen)
+    water_group.draw(screen)
+    exit_group.draw(screen)
 
 
 
