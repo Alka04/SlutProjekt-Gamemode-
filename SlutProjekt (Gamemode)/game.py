@@ -22,10 +22,13 @@ FPS = 60
 
 #definera spelets variabler
 GRAVITY = 0.75
+SCROLL_THRESH = 200
 ROWS = 16
 COLS = 150
 TILE_SIZE = SCREEN_HEIGHT // ROWS
 TILE_TYPES = 21
+screen_scroll = 0
+bg_scroll = 0
 level = 1
 
 #definera spelarens handling variabler
@@ -36,6 +39,10 @@ grenade = False
 grenade_thrown = False
 
 #ladda in bilder
+pine1_img = pygame.image.load('img/Background/pine1.png').convert_alpha()
+pine2_img = pygame.image.load('img/Background/pine2.png').convert_alpha()
+mountain_img = pygame.image.load('img/Background/mountain.png').convert_alpha()
+sky_img = pygame.image.load('img/Background/sky_cloud.png').convert_alpha()
 #spara tiles i en lista
 img_list = []
 for x in range(TILE_TYPES):
@@ -75,6 +82,13 @@ def draw_text(text, font, text_col, x, y):
 
 def draw_bg():
     screen.fill(BG)
+    width = sky_img.get_width()
+    for x in range(5):
+        screen.blit(sky_img, ((x * width) - bg_scroll * 0.5,0))
+        screen.blit(mountain_img, ((x * width) - bg_scroll * 0.6, SCREEN_HEIGHT - mountain_img.get_height() - 300))
+        screen.blit(pine1_img, ((x * width) - bg_scroll * 0.7, SCREEN_HEIGHT - pine1_img.get_height() - 150))
+        screen.blit(pine2_img, ((x * width) - bg_scroll * 0.8, SCREEN_HEIGHT - pine2_img.get_height()))
+    
 
 
 
@@ -134,6 +148,7 @@ class Soldier(pygame.sprite.Sprite):
 
     def move(self, moving_left, moving_right):
         #starta om rörelse variablerna
+        screen_scroll = 0
         dx = 0
         dy = 0
 
@@ -182,6 +197,14 @@ class Soldier(pygame.sprite.Sprite):
         self.rect.x += dx
         self.rect.y += dy
 
+        #uppdatera skroll baserad på spelarens position
+        if self.char_type == 'player':
+            if  self.rect.right > SCREEN_WIDTH - SCROLL_THRESH or self.rect.left < SCROLL_THRESH:
+                self.rect.x -= dx
+                screen_scroll = -dx 
+
+        return screen_scroll
+
     def shoot(self):
         if self.shoot_cooldown == 0 and self.ammo > 0:
             self.shoot_cooldown = 20
@@ -222,6 +245,10 @@ class Soldier(pygame.sprite.Sprite):
                     self.idling_counter -= 1
                     if self.idling_counter <= 0:
                         self.idling = False
+
+        #Skroll
+        self.rect.x += screen_scroll
+
 
     def update_animation(self):
         #Uppdatera animation
@@ -305,6 +332,7 @@ class World():
     
     def draw(self):
         for tile in self.obstacle_list:
+            tile[1][0] += screen_scroll
             screen.blit(tile[0], tile[1])
 
 class Decoration(pygame.sprite.Sprite):
@@ -313,6 +341,9 @@ class Decoration(pygame.sprite.Sprite):
         self.image = img
         self.rect = self.image.get_rect()
         self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+    
+    def update(self):
+        self.rect.x += screen_scroll
 
 
 class Water(pygame.sprite.Sprite):
@@ -321,6 +352,9 @@ class Water(pygame.sprite.Sprite):
         self.image = img
         self.rect = self.image.get_rect()
         self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+
+    def update(self):
+        self.rect.x += screen_scroll
 
 class Exit(pygame.sprite.Sprite):
     def __init__(self, img, x, y):
@@ -341,6 +375,8 @@ class ItemBox(pygame.sprite.Sprite):
 
 
     def update(self):
+        #Skroll
+        self.rect.x += screen_scroll
         #Kolla om spelaren har plockat uypp lådan
         if pygame.sprite.collide_rect(self, player):
             #Kolla vilken typ av låda det var
@@ -385,7 +421,7 @@ class Bullet(pygame.sprite.Sprite):
 
     def update(self):
         #Flytta på kulan
-        self.rect.x += (self.direction * self.speed)
+        self.rect.x += (self.direction * self.speed) + screen_scroll
         #Kontrollera om kulan har försvunnit från skärmen
         if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
             self.kill()
@@ -445,7 +481,7 @@ class Grenade(pygame.sprite.Sprite):
 
 
         #uppdatera grenatens position
-        self.rect.x += dx
+        self.rect.x += dx + screen_scroll
         self.rect.y += dy
 
 
@@ -480,6 +516,9 @@ class Explosion(pygame.sprite.Sprite):
 
 
     def update(self):
+        #Skroll
+        self.rect.x += screen_scroll
+
         EXPLOSION_SPEED = 4
         #Uppdatera explosions animationen
         self.counter += 1
@@ -584,7 +623,8 @@ while run:
             player.update_action(1)#1: run
         else:
             player.update_action(0)#0: idle
-        player.move(moving_left, moving_right)
+        screen_scroll = player.move(moving_left, moving_right)
+        bg_scroll -= screen_scroll
 
     for event in pygame.event.get():
         #Avsluta Spelet
